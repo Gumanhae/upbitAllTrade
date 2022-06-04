@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html xmlns:th="http://wwww.thymeleaf.org">
+<head>
+	<meta charset="UTF-8">
+	<title>메인</title>
+	
+	<script src="https://code.jquery.com/jquery-1.12.4.min.js"></script>
+	
+	<script type="text/javascript">
+		let coinCnt;
+		let krw;
+		let accAvg;
+		let accountsCnt;
+		let accounts = new Array();
+		let coinList = new Array();
+		
+		$(function() {
+			// 코인리스트 호출
+			$("#listBtn").on("click", function() {
+				const options = {method: 'GET'};
+		
+				fetch('https://api.upbit.com/v1/market/all?isDetails=false', options)
+				  .then(response => response.json())
+				  .then(res => getList(res))
+				  .catch(err => console.error(err));
+			})
+			
+			// 보유자산 조회
+			$("#getAccountsBtn").on("click", function() {
+				if(isEmpty(coinCnt)) {
+					alert("우선 코인을 조회해주세요!");
+					return;
+				}
+				
+				$.ajax({
+					url : "/getAccounts",
+					method : "GET",
+					success : function(result) {
+						accounts = JSON.parse(result);
+						console.log(accounts)
+						krw = Math.floor(accounts[0].balance);
+						
+						accAvg = krw/coinCnt;
+						accAvg = Math.floor(accAvg);
+						accountsCnt = accounts.length;
+						console.log(accountsCnt);
+						console.log(accAvg);
+					}
+				})
+			})
+			
+			// 모든코인 매수
+			$("#buyingAll").on("click", function() {
+				if(isEmpty(accountsCnt)) {
+					alert("자산을 조회해주세요!");
+					return;
+				}
+				
+				// 사용할때 쓸거
+				if(accAvg<5000) {
+					alert("최소 매수금액은 5000KRW입니다!");
+					return;
+				}
+				
+				let param = {
+					"accAvg" : accAvg,
+					"coinList" : coinList
+				}
+				
+				$.ajax({
+					url : "/buyingOrders",
+					method : "POST",
+					data : JSON.stringify(param),
+					dataType:"json",
+// 					traditional = true,
+					contentType: "application/json",
+					complete :function(result) {
+						alert("매수가 완료되었습니다. 자산을 재조회해주세요!");
+					}
+				})
+			})
+			
+			// 모든코인 매도
+			$("#sellingAll").on("click", function() {
+				if(isEmpty(accountsCnt)) {
+					alert("자산을 조회해주세요!");
+					return;
+				}
+				
+				if(accountsCnt==1) {
+					alert("보유한 코인이 없습니다!");
+					return;
+				}
+				
+				$.ajax({
+					url : "/sellingOrders",
+					method : "POST",
+					data : JSON.stringify(accounts),
+					dataType:"json",
+// 					traditional = true,
+					contentType: "application/json",
+					complete :function(result) {
+						alert("매도가 완료되었습니다. 자산을 재조회해주세요!");
+					}
+				})
+			})
+		})
+		
+		// KRW 리스트 조회
+		function getList(res) {
+			coinList = new Array();
+			res.forEach(function(idx) {
+				if(idx.market.match("KRW")) {
+					coinList.push(idx);
+				}
+			})
+			coinCnt = coinList.length;
+			console.log(coinList);
+		}
+		
+		/**
+	     * 문자열이 빈 문자열인지 체크하여 결과값을 리턴한다.
+	     * @param str       : 체크할 문자열
+	     */
+	    function isEmpty(str){
+	        if(typeof str == "undefined" || str == null || str == "") {
+	            return true;
+	        } else {
+	        	return false;
+	        }
+	    }
+		
+	</script>
+</head>
+
+<body>
+	<button id="listBtn">리스트호출</button>
+	<button id="getAccountsBtn">자산 조회</button>
+	<button id="buyingAll">일괄매수</button>
+	<button id="sellingAll">일괄매도</button>
+</body>
+</html>
